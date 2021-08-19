@@ -27,17 +27,21 @@ module OmniAuth
 
       info do
         {
-          'email' => raw_info['mail'],
-          'first_name' => raw_info['givenName'],
-          'last_name' => raw_info['surname'],
-          'name' => [raw_info['givenName'], raw_info['surname']].join(' '),
-          'nickname' => raw_info['displayName'],
+          email:             raw_info['mail'],
+          first_name:        raw_info['givenName'],
+          last_name:         raw_info['surname'],
+          name:              [raw_info['givenName'], raw_info['surname']].join(' '),
+          nickname:          raw_info['displayName'],
+          organization_name: org["displayName"],
+          organization_id:   org["id"],
+          image:             image_url
         }
       end
 
       extra do
         {
           'raw_info' => raw_info,
+          'org_info' => org_info,
           'params' => access_token.params,
           'aud' => options.client_id
         }
@@ -58,6 +62,38 @@ module OmniAuth
 
       def raw_info
         @raw_info ||= access_token.get('https://graph.microsoft.com/v1.0/me').parsed
+      end
+
+      def image_url
+        uri = 'https://graph.microsoft.com/v1.0/me/photo/$value'
+        return uri unless image_size_opts_passed?
+        return uri if image_params.nil?
+
+        "https://graph.microsoft.com/v1.0/me/photos/#{image_params}/$value"
+      end
+
+      def image_size_opts_passed?
+        options[:image_size]
+      end
+
+      def image_params
+        image_params_size = nil
+        if options[:image_size].is_a?(Integer)
+          image_params_size = "#{options[:image_size]}x#{options[:image_size]}"
+        elsif options[:image_size].is_a?(Hash)
+          image_params = "#{options[:image_size][:width]}x#{options[:image_size][:height]}" if options[:image_size][:width] && options[:image_size][:height]
+        elsif options[:image_size].is_a?(String)
+          image_params_size = "#{options[:image_size]}"
+        end
+        image_params_size
+      end
+
+      def image_url
+        @image_url ||= 'https://graph.microsoft.com/v1.0/me/photo/$value'
+      end
+
+      def org_info
+        @org_info ||= access_token.get('https://graph.microsoft.com/v1.0/organization').parsed
       end
 
       def callback_url
