@@ -32,8 +32,8 @@ module OmniAuth
           last_name:         raw_info['surname'],
           name:              [raw_info['givenName'], raw_info['surname']].join(' '),
           nickname:          raw_info['displayName'],
-          organization_name: org["displayName"],
-          organization_id:   org["id"],
+          organization_name: org_info["displayName"],
+          organization_id:   org_info["id"],
           image:             image_url
         }
       end

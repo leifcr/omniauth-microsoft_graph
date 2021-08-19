@@ -241,14 +241,21 @@ describe OmniAuth::Strategies::MicrosoftGraph do
     end
   end
 
-  describe '#callback_path' do
+  describe '#callback_url' do
+    let(:base_url) { 'https://example.com' }
+
     it 'has the correct default callback path' do
-      expect(subject.callback_path).to eq('/auth/microsoft_graph/callback')
+      allow(subject).to receive(:full_host) { base_url }
+      allow(subject).to receive(:script_name) { '' }
+      expect(subject.send(:callback_url)).to eq(base_url + '/auth/microsoft_graph/callback')
     end
 
     it 'should set the callback_path parameter if present' do
       @options = { callback_path: '/auth/foo/callback' }
+      allow(subject).to receive(:full_host) { base_url }
+      allow(subject).to receive(:script_name) { '' }
       expect(subject.callback_path).to eq('/auth/foo/callback')
+      expect(subject.send(:callback_url)).to eq(base_url + '/auth/foo/callback')
     end
   end
 
@@ -257,6 +264,7 @@ describe OmniAuth::Strategies::MicrosoftGraph do
       OAuth2::Client.new('abc', 'def') do |builder|
         builder.request :url_encoded
         builder.adapter :test do |stub|
+          stub.get('/v1.0/organization') { [200, { 'content-type' => 'application/json' }, organization_hash.to_json] }
           stub.get('/v1.0/me') { [200, { 'content-type' => 'application/json' }, response_hash.to_json] }
         end
       end
@@ -268,12 +276,14 @@ describe OmniAuth::Strategies::MicrosoftGraph do
       let(:response_hash) do
         { mail: 'something@domain.invalid' }
       end
+      let(:organization_hash) do
+        { displayName: 'Some Organization' }
+      end
 
       it 'should return equal email ' do
-        expect(subject.info['email']).to eq('something@domain.invalid')
+        expect(subject.info[:email]).to eq('something@domain.invalid')
       end
     end
-
   end
 
   describe '#extra' do
@@ -282,6 +292,7 @@ describe OmniAuth::Strategies::MicrosoftGraph do
         builder.request :url_encoded
         builder.adapter :test do |stub|
           stub.get('/v1.0/me') { [200, { 'content-type' => 'application/json' }, '{"id": "12345"}'] }
+          stub.get('/v1.0/organization') { [200, { 'content-type' => 'application/json' }, { displayName: 'Some Organization' }.to_json] }
         end
       end
     end
