@@ -32,8 +32,8 @@ module OmniAuth
           last_name:         raw_info['surname'],
           name:              [raw_info['givenName'], raw_info['surname']].join(' '),
           nickname:          raw_info['displayName'],
-          organization_name: org_info["displayName"],
-          organization_id:   org_info["id"],
+          organization_name: org_info['displayName'],
+          organization_id:   org_info['id'],
           image:             image_data # jpeg encoded image
         }
       end
@@ -81,17 +81,26 @@ module OmniAuth
       end
 
       def image_data
-        @image_data ||= access_token.get('https://graph.microsoft.com/v1.0/me')
-        return nil if @image_data.nil?
-        @image_data = image_data.body
-      # rescue ::OAuth2::Error => e
-      #   if e.response.status == 404
-      #     nil
-      #   elsif e.code['code'] == 'GetUserPhoto' && e.code['message'].match('not supported')
-      #     nil
-      #   else
-      #     raise
-      #   end
+        return @image_data if @image_data.present?
+
+        id ||= access_token.get(image_url)
+        if id.nil?
+          return @image_data = nil
+        end
+
+        if id.body.nil?
+          return @image_data = nil
+        end
+
+        @image_data = id.body
+      rescue ::OAuth2::Error => e
+        if e.response.status == 404
+          nil
+        elsif e.code['code'] == 'GetUserPhoto' && e.code['message'].match('not supported')
+          nil
+        else
+          raise
+        end
       end
 
       def image_url
@@ -125,7 +134,7 @@ module OmniAuth
       def org_info
         @org_info ||= access_token.get('https://graph.microsoft.com/v1.0/organization').parsed
         return @org_info if @org_info.nil?
-        o = @org_info.dig(:value)
+        o = @org_info.dig('value')
         return @org_info if o.nil?
         return @org_info if o.length == 0
         @org_info = o[0]
