@@ -34,7 +34,7 @@ module OmniAuth
           nickname:          raw_info['displayName'],
           organization_name: org_info["displayName"],
           organization_id:   org_info["id"],
-          image:             image_url
+          image:             image_data # jpeg encoded image
         }
       end
 
@@ -61,7 +61,37 @@ module OmniAuth
       end
 
       def raw_info
-        @raw_info ||= access_token.get('https://graph.microsoft.com/v1.0/me').parsed
+        @raw_info ||= get_profile_and_verify_domain
+      end
+
+      def get_profile_and_verify_domain
+        token = access_token.get('https://graph.microsoft.com/v1.0/me').parsed
+
+        return token unless options.hd
+
+        email = token["mail"] || token["userPrincipalName"]
+
+        current_host_domain = email.split("@")[1]
+
+        unless options.hd.split(',').any?{ |hd| hd.casecmp(current_host_domain)==0 }
+          raise CallbackError.new(:invalid_hd, "Invalid Hosted Domain - Received HD(#{current_host_domain}) - Allowed HD(#{options.hd})")
+        end
+
+        token
+      end
+
+      def image_data
+        @image_data ||= access_token.get('https://graph.microsoft.com/v1.0/me')
+        return nil if @image_data.nil?
+        @image_data = image_data.body
+      rescue ::OAuth2::Error => e
+        if e.response.status == 404
+          nil
+        elsif e.code['code'] == 'GetUserPhoto' && e.code['message'].match('not supported')
+          nil
+        else
+          raise
+        end
       end
 
       def image_url
@@ -94,6 +124,11 @@ module OmniAuth
 
       def org_info
         @org_info ||= access_token.get('https://graph.microsoft.com/v1.0/organization').parsed
+        return @org_info if @org_info.nil?
+        o = @org_info.dig(:value)
+        return @org_info if o.nil?
+        return @org_info if o.length == 0
+        @org_info = o[0]
       end
 
       def callback_url
