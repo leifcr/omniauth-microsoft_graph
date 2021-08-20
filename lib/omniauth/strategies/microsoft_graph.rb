@@ -84,14 +84,14 @@ module OmniAuth
         @image_data ||= access_token.get('https://graph.microsoft.com/v1.0/me')
         return nil if @image_data.nil?
         @image_data = image_data.body
-      rescue ::OAuth2::Error => e
-        if e.response.status == 404
-          nil
-        elsif e.code['code'] == 'GetUserPhoto' && e.code['message'].match('not supported')
-          nil
-        else
-          raise
-        end
+      # rescue ::OAuth2::Error => e
+      #   if e.response.status == 404
+      #     nil
+      #   elsif e.code['code'] == 'GetUserPhoto' && e.code['message'].match('not supported')
+      #     nil
+      #   else
+      #     raise
+      #   end
       end
 
       def image_url
